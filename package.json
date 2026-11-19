@@ -1,0 +1,14 @@
+{
+  "name": "gestor-tareas-gitflow",
+  "version": "1.0.0",
+  "description": "CRUD de tareas en Node.js desarrollado con Git Flow (Tarea 3 - Programación III)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
