@@ -61,6 +61,24 @@ async function handleApi(req, res, pathname) {
     return sendJson(res, 201, storage.create(body));
   }
 
+  // UPDATE
+  if (req.method === 'PUT' && id) {
+    const body = await readBody(req);
+    const task = storage.update(id, body);
+    return task
+      ? sendJson(res, 200, task)
+      : sendJson(res, 404, { error: 'Tarea no encontrada' });
+  }
+
+  // DELETE
+  if (req.method === 'DELETE' && id) {
+    if (!storage.remove(id)) {
+      return sendJson(res, 404, { error: 'Tarea no encontrada' });
+    }
+    res.writeHead(204);
+    return res.end();
+  }
+
   return sendJson(res, 405, { error: 'Método no permitido' });
 }
 
