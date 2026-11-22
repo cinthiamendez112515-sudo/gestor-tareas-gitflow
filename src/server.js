@@ -48,6 +48,29 @@ function readBody(req) {
   });
 }
 
+// Devuelve un mensaje de error, o null si los datos son válidos.
+// partial = true se usa en PUT: solo se validan los campos que vienen.
+function validateTask(body, partial) {
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+    return 'El cuerpo debe ser un objeto JSON';
+  }
+  if (!partial || 'title' in body) {
+    if (typeof body.title !== 'string' || body.title.trim() === '') {
+      return 'El título es obligatorio';
+    }
+    if (body.title.trim().length > 100) {
+      return 'El título no puede superar los 100 caracteres';
+    }
+  }
+  if ('description' in body && typeof body.description !== 'string') {
+    return 'La descripción debe ser texto';
+  }
+  if ('done' in body && typeof body.done !== 'boolean') {
+    return 'El campo done debe ser verdadero o falso';
+  }
+  return null;
+}
+
 async function handleApi(req, res, pathname) {
   const match = pathname.match(/^\/api\/tasks(?:\/([\w-]+))?$/);
   if (!match) return sendJson(res, 404, { error: 'Ruta no encontrada' });
@@ -69,12 +92,21 @@ async function handleApi(req, res, pathname) {
   // CREATE
   if (req.method === 'POST' && !id) {
     const body = await readBody(req);
-    return sendJson(res, 201, storage.create(body));
+    const error = validateTask(body, false);
+    if (error) return sendJson(res, 400, { error });
+    return sendJson(
+      res,
+      201,
+      storage.create({ title: body.title.trim(), description: body.description })
+    );
   }
 
   // UPDATE
   if (req.method === 'PUT' && id) {
     const body = await readBody(req);
+    const error = validateTask(body, true);
+    if (error) return sendJson(res, 400, { error });
+    if ('title' in body) body.title = body.title.trim();
     const task = storage.update(id, body);
     return task
       ? sendJson(res, 200, task)
