@@ -1,7 +1,18 @@
 'use strict';
 
 const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
 const storage = require('./storage');
+
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.ico': 'image/x-icon',
+};
 
 function sendJson(res, status, body) {
   const data = JSON.stringify(body);
@@ -82,11 +93,36 @@ async function handleApi(req, res, pathname) {
   return sendJson(res, 405, { error: 'Método no permitido' });
 }
 
+function serveStatic(req, res, pathname) {
+  if (req.method !== 'GET') {
+    return sendJson(res, 405, { error: 'Método no permitido' });
+  }
+  const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
+  const file = path.join(PUBLIC_DIR, relative);
+
+  // Evita salir de la carpeta public (path traversal)
+  if (!file.startsWith(PUBLIC_DIR + path.sep)) {
+    return sendJson(res, 403, { error: 'Acceso denegado' });
+  }
+
+  fs.readFile(file, (err, data) => {
+    if (err) return sendJson(res, 404, { error: 'Archivo no encontrado' });
+    res.writeHead(200, {
+      'Content-Type': MIME_TYPES[path.extname(file)] || 'application/octet-stream',
+    });
+    res.end(data);
+  });
+}
+
 function createServer() {
   return http.createServer(async (req, res) => {
     try {
       const { pathname } = new URL(req.url, 'http://localhost');
-      await handleApi(req, res, pathname);
+      if (pathname.startsWith('/api/')) {
+        await handleApi(req, res, pathname);
+      } else {
+        serveStatic(req, res, pathname);
+      }
     } catch (err) {
       const status = err.status || 500;
       sendJson(res, status, {
